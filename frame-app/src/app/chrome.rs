@@ -20,9 +20,9 @@ use super::{
     ActiveView, AppearancePopover, AppearanceSettings, ClickEvent, ColorTheme, Context,
     ExternalPaths, FILE_LIST_ACTION_ICON_SIZE, FRAME_APP_VERSION, FluentBuilder, FocusHandle,
     FrameAppState, FrameRoot, FrameTextInputKind, INTERACTION_MOTION_DURATION, InteractiveElement,
-    IntoElement, LEFT_COLUMN_SPAN, MouseButton, PANEL_HEADER_HEIGHT, ParentElement, PopoverState,
-    RIGHT_COLUMN_SPAN, SETTINGS_CONTROL_HEIGHT, SURFACE_MOTION_DURATION, ScalePreset, ScrollHandle,
-    StartAvailability, StatefulInteractiveElement, Styled, TITLEBAR_ACTION_ICON_SIZE,
+    IntoElement, LEFT_COLUMN_SPAN, MouseButton, MouseMoveEvent, PANEL_HEADER_HEIGHT, ParentElement,
+    PopoverState, RIGHT_COLUMN_SPAN, SETTINGS_CONTROL_HEIGHT, SURFACE_MOTION_DURATION, ScalePreset,
+    ScrollHandle, StartAvailability, StatefulInteractiveElement, Styled, TITLEBAR_ACTION_ICON_SIZE,
     TITLEBAR_DIVIDER_HEIGHT, TITLEBAR_HEIGHT, TITLEBAR_ICON_SIZE,
     TITLEBAR_LINUX_WINDOW_BUTTON_SIZE, TITLEBAR_LINUX_WINDOW_CONTROLS_GAP,
     TITLEBAR_LINUX_WINDOW_CONTROLS_PADDING_X, TITLEBAR_LOGO_SIZE,
@@ -179,13 +179,20 @@ fn titlebar_drag_surface(cx: &Context<FrameRoot>) -> gpui::Div {
         )
         .on_mouse_down(
             MouseButton::Left,
-            cx.listener(|root, _event, _window, _cx| {
-                root.titlebar_drag.should_move = true;
+            cx.listener(|root, _event, window, _cx| {
+                // Buttons inside the titlebar mark the press as handled via `prevent_default`;
+                // only a press on the bare titlebar surface may start a window drag.
+                root.titlebar_drag.should_move = !window.default_prevented();
             }),
         )
-        .on_mouse_move(cx.listener(|root, _event, window, _cx| {
-            if root.titlebar_drag.should_move {
-                root.titlebar_drag.should_move = false;
+        .on_mouse_move(cx.listener(|root, event: &MouseMoveEvent, window, _cx| {
+            if !root.titlebar_drag.should_move {
+                return;
+            }
+            root.titlebar_drag.should_move = false;
+            // Click listeners may stop propagation of the mouse-up, so confirm the left button
+            // is still held; otherwise the window would stay glued to the cursor.
+            if event.pressed_button == Some(MouseButton::Left) {
                 window.start_window_move();
             }
         }))
@@ -581,22 +588,7 @@ pub(super) fn app_settings_sheet(
                                             .text_color(color(palette.danger))
                                             .child(error),
                                     )
-                                })
-                                .child(app_settings_updates_section(
-                                    props.auto_update_check,
-                                    props.update_status,
-                                    props.update_install_ready,
-                                    AppSettingsUpdateFocuses {
-                                        auto_update: props.auto_update_focus,
-                                        check_now: props.check_now_focus,
-                                        download: props.download_focus,
-                                        skip: props.skip_focus,
-                                        install: props.install_focus,
-                                    },
-                                    palette,
-                                    window,
-                                    cx,
-                                )),
+                                }),
                         )
                         .child(app_settings_version_label(palette)),
                 ),
@@ -2314,50 +2306,6 @@ pub(super) fn linux_window_controls(
         .gap(theme::ui_rem(TITLEBAR_LINUX_WINDOW_CONTROLS_GAP))
         .px(theme::ui_rem(TITLEBAR_LINUX_WINDOW_CONTROLS_PADDING_X))
         .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-        .child(
-            titlebar_window_button(
-                "titlebar-linux-minimize",
-                assets::ICON_MINUS,
-                "Minimize window",
-                TitlebarWindowButtonMetrics {
-                    icon_size: TITLEBAR_ACTION_ICON_SIZE,
-                    width: TITLEBAR_LINUX_WINDOW_BUTTON_SIZE,
-                    height: TITLEBAR_LINUX_WINDOW_BUTTON_SIZE,
-                    radius: theme::RADIUS_SM,
-                },
-                false,
-                palette,
-                window,
-                cx,
-            )
-            .window_control_area(WindowControlArea::Min)
-            .on_click(cx.listener(|_, _: &ClickEvent, window, cx| {
-                cx.stop_propagation();
-                window.minimize_window();
-            })),
-        )
-        .child(
-            titlebar_window_button(
-                "titlebar-linux-maximize",
-                assets::ICON_SQUARE,
-                "Maximize window",
-                TitlebarWindowButtonMetrics {
-                    icon_size: TITLEBAR_ACTION_ICON_SIZE,
-                    width: TITLEBAR_LINUX_WINDOW_BUTTON_SIZE,
-                    height: TITLEBAR_LINUX_WINDOW_BUTTON_SIZE,
-                    radius: theme::RADIUS_SM,
-                },
-                false,
-                palette,
-                window,
-                cx,
-            )
-            .window_control_area(WindowControlArea::Max)
-            .on_click(cx.listener(|_, _: &ClickEvent, window, cx| {
-                cx.stop_propagation();
-                window.zoom_window();
-            })),
-        )
         .child(
             titlebar_window_button(
                 "titlebar-linux-close",

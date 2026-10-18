@@ -28,7 +28,7 @@ pub use runtime::{frame_window_options, init_app, open_frame_window};
 use accessibility::{FrameFocusKey, FrameFocusRegistry};
 use chrome::{
     AppSettingsSelectFocuses, AppSettingsSheetProps, app_settings_sheet, drag_drop_overlay,
-    titlebar, update_dialog,
+    titlebar,
 };
 use input::{FrameTextInputKind, FrameTextInputUiState};
 use logs_panel::logs_view;

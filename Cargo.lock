@@ -2066,7 +2066,6 @@ dependencies = [
  "ashpd",
  "cpal",
  "directories",
- "embed-resource",
  "frame-core",
  "frame-updater",
  "gpui",
@@ -2074,8 +2073,6 @@ dependencies = [
  "image",
  "libc",
  "notify-rust",
- "objc2-app-kit 0.3.2",
- "raw-window-handle",
  "rfd",
  "semver",
  "serde",
@@ -2084,7 +2081,6 @@ dependencies = [
  "smol",
  "sysinfo",
  "thiserror 2.0.21",
- "windows 0.62.2",
 ]
 
 [[package]]

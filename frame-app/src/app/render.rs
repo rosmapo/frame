@@ -4,7 +4,6 @@ use super::preview_panel::{
     PreviewEditToolbarFocus, PreviewEditToolbarFocuses, PreviewToolFocuses, PreviewViewportFocuses,
 };
 use super::*;
-use crate::app::chrome::UpdateDialogView;
 
 impl Render for FrameRoot {
     #[expect(
@@ -676,18 +675,9 @@ impl Render for FrameRoot {
                 update_install_ready,
                 cx,
             );
-            let last_focus = match &self.update_ui.status {
-                UpdateStatus::Available(_) => &skip_focus,
-                UpdateStatus::ReadyToInstall(_) if update_install_ready => &install_focus,
-                UpdateStatus::ReadyToInstall(_)
-                | UpdateStatus::UpToDate
-                | UpdateStatus::Disabled(_)
-                | UpdateStatus::Error(_)
-                | UpdateStatus::Idle => &check_now_focus,
-                UpdateStatus::Checking
-                | UpdateStatus::Downloading { .. }
-                | UpdateStatus::Installing => &auto_update_focus,
-            };
+            // The settings sheet no longer has an updates section, so the concurrency input is
+            // the last focusable control.
+            let last_focus = &value_focus;
             let panel_focus = self.ensure_focus(
                 FrameFocusKey::Control("app-settings-panel".to_string()),
                 false,
@@ -757,37 +747,6 @@ impl Render for FrameRoot {
             root = root.child(drag_drop_overlay(
                 self.drag_drop_ui.is_open,
                 palette,
-                window,
-                cx,
-            ));
-        }
-
-        if self.update_ui.dialog_present {
-            let update_install_ready = self.can_install_downloaded_update();
-            let panel_focus = self.ensure_focus(
-                FrameFocusKey::Control("update-dialog-panel".to_string()),
-                false,
-                cx,
-            );
-            let close_focus = self.ensure_focus(
-                FrameFocusKey::Control("update-dialog-close".to_string()),
-                !self.update_ui.status.is_busy(),
-                cx,
-            );
-            if self.update_ui.dialog_open && !panel_focus.contains_focused(window, cx) {
-                close_focus.focus(window, cx);
-            }
-            root = root.child(update_dialog(
-                self.update_ui.dialog_open,
-                UpdateDialogView {
-                    status: &self.update_ui.status,
-                    info: self.update_ui.dialog_info.as_deref(),
-                    install_ready: update_install_ready,
-                    release_notes_scroll_handle: &self.update_ui.release_notes_scroll_handle,
-                    panel_focus: &panel_focus,
-                    close_focus: &close_focus,
-                    palette,
-                },
                 window,
                 cx,
             ));

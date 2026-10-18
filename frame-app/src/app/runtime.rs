@@ -64,16 +64,27 @@ pub fn init_app(cx: &mut App, name: impl Into<SharedString>) {
 /// Panics when GPUI cannot create the main window.
 pub fn open_frame_window(cx: &mut App) {
     let bounds = Bounds::centered(None, size(px(WINDOW_MIN_WIDTH), px(WINDOW_MIN_HEIGHT)), cx);
+    let startup_paths = startup_source_paths(std::env::args_os().skip(1));
     cx.open_window(frame_window_options(bounds), |_, cx| {
         cx.new(|cx| {
             let mut root = FrameRoot::new_with_platform_persistence();
-            root.restore_pending_update_session(cx);
             root.load_runtime_capabilities(cx);
-            root.startup_update_check(cx);
+            FrameRoot::import_source_paths(startup_paths, cx);
             root
         })
     })
     .expect("failed to open Frame GPUI window");
+}
+
+/// Collects files passed on the command line so they can be opened on startup.
+///
+/// Flags (arguments starting with `-`) and paths that do not exist are ignored.
+fn startup_source_paths(args: impl IntoIterator<Item = std::ffi::OsString>) -> Vec<PathBuf> {
+    args.into_iter()
+        .filter(|arg| !arg.to_string_lossy().starts_with('-'))
+        .map(PathBuf::from)
+        .filter(|path| path.exists())
+        .collect()
 }
 
 #[must_use]
